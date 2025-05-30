@@ -22,7 +22,7 @@ gs=groundStation(sc,Name='WHU',Latitude=latitude,Longitude=longitude,Altitude=al
 disp('importing satellites...')
 % 创建和读取卫星，渲染轨道
 % sat=satellite(sc,[pwd,'\gp_single.tle'],OrbitPropagator="sgp4");
-% sat=satellite(sc,[pwd,'\gp_half.tle'],OrbitPropagator="sgp4");
+sat=satellite(sc,[pwd,'\gp_half.tle'],OrbitPropagator="sgp4");
 % sat=satellite(sc,[pwd,'\sup-gp.tle'],OrbitPropagator="sgp4");
 
 
@@ -40,25 +40,28 @@ disp('plotting radar figure...')
 % 获取地面站 ECEF 坐标
 gsLLA = [latitude, longitude, altitude];
 gsECEF = lla2ecef(gsLLA);
-%% 
 
 % position: [3, numSats, numTimes]，需要根据实际维度调整
-% [numDim, numTimes, numSats] = size(position);
+[numDim, numTimes, numSats] = size(position);
 
-% azimuths = zeros(numTimes,numSats );
-% elevations = zeros(numTimes,numSats );
-
-vecECEF=position-gsECEF';
-[xn,ye,zup]=ecef2enu(vecECEF(1,:,:),vecECEF(2,:,:),vecECEF(3,:,:),gsLLA(1),gsLLA(2),gsLLA(3),wgs84Ellipsoid);
-[azimuth,elevations]=enu2aer(xn,ye,zup);
-azimuth=squeeze(azimuth);
-elevations=squeeze(elevations);
+azimuths = zeros(numTimes,numSats );
+elevations = zeros(numTimes,numSats );
 
 
 
-
-
-
+for t = 1:numTimes
+    for s = 1:numSats
+        satECEF = position(:,t,s)';
+        % 计算卫星到地面站的向量
+        vecECEF = satECEF - gsECEF;
+        % 转换到 ENU 坐标系
+        [xn,ye,zup] = ecef2enu(vecECEF(1),vecECEF(2),vecECEF(3), gsLLA(1),gsLLA(2),gsLLA(3),wgs84Ellipsoid);
+        % 计算方位角和仰角
+        [azimuths(t, s),elevations(t, s), ~] = enu2aer(xn,ye,zup);
+        % azimuths(s, t) = rad2deg(az);
+        % elevations(s, t) = rad2deg(el);
+    end
+end
 % %% 
 % figure;
 % hold on;
