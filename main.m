@@ -1,5 +1,4 @@
-%% phase 1
-% tle_struct=TLE_read([pwd,'\gp.tle']);
+%% 定义数值
 % tic
 disp('begin...')
 latitude=30.5288888;
@@ -9,15 +8,16 @@ minelevation=60;
 starttime=datetime(2025,5,30,14,0,0,'TimeZone',hours(8));
 sampletime=60;
 
-% https://www.mathworks.com/help/releases/R2024b/aerotbx/ug/satelliteScenario-key-concepts.html#mw_e08739b4-c5da-4983-898b-56e18cc71f87
 %% 
-disp('creating satellitescenario...')
+disp('creating satellitescenario object...')
 % 创建图窗
 sc = satelliteScenario(starttime,starttime+hours(2),sampletime);
+
 %% 
 disp('creating groundstation...')
 % 创建地面站
 gs=groundStation(sc,Name='WHU',Latitude=latitude,Longitude=longitude,Altitude=altitude,MinElevationAngle=minelevation);
+
 %% 
 disp('importing satellites...')
 % 创建和读取卫星，渲染轨道
@@ -27,26 +27,19 @@ disp('importing satellites...')
 
 
 %% 
-% 设置卫星的可见性
+% 设置卫星的可见性(optional)
 disp('computing visibility...')
 ac=access(gs,sat);
 intvls = accessIntervals(ac);
 
 %% 
-disp('plotting radar figure...')
+disp('getting positions and predicting...')
 
 [position,velocity]=states(sat,CoordinateFrame='ecef');
 
 % 获取地面站 ECEF 坐标
 gsLLA = [latitude, longitude, altitude];
 gsECEF = lla2ecef(gsLLA);
-%% 
-
-% position: [3, numSats, numTimes]，需要根据实际维度调整
-% [numDim, numTimes, numSats] = size(position);
-
-% azimuths = zeros(numTimes,numSats );
-% elevations = zeros(numTimes,numSats );
 
 vecECEF=position-gsECEF';
 [xn,ye,zup]=ecef2enu(vecECEF(1,:,:),vecECEF(2,:,:),vecECEF(3,:,:),gsLLA(1),gsLLA(2),gsLLA(3),wgs84Ellipsoid);
@@ -54,30 +47,9 @@ vecECEF=position-gsECEF';
 azimuth=squeeze(azimuth);
 elevations=squeeze(elevations);
 
+%% plot radar figure
+disp('plotting radar figure...');
 
-
-
-
-
-% %% 
-% figure;
-% hold on;
-% for t = 1:numTimes
-%     for s = 1:numSats
-%         az = azimuths(s, t);
-%         el = elevations(s, t);
-%         if -el > 60
-%             % 可见卫星用红色点
-%             polarscatter(deg2rad(az), 90+el, 'ro', 'MarkerSize', 6, 'MarkerFaceColor', 'r');
-%         end
-%     end
-% end
-% % set(gca, 'ThetaZeroLocation', 'top', 'ThetaDir', 'clockwise');
-% rlim([0 90]);
-% rticks([0 30 60 90]);
-% rticklabels({'90°','60°','30°','0°'});
-% title('卫星可见性雷达图（仰角>60°为可见）');
-% hold off;
 
 % toc
 %% 
