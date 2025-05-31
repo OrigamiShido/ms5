@@ -24,9 +24,7 @@ gs=groundStation(sc,Name='WHU',Latitude=latitude,Longitude=longitude,Altitude=al
 %% 导入卫星
 disp('importing satellites...')
 % 创建和读取卫星，渲染轨道
-% sat=satellite(sc,[pwd,'\gp_single.tle'],OrbitPropagator="sgp4");
 sat=satellite(sc,[pwd,'\gp.tle'],OrbitPropagator="sgp4");
-% sat=satellite(sc,[pwd,'\sup-gp.tle'],OrbitPropagator="sgp4");
 
 %% 获取位置
 disp('getting positions and predicting...')
@@ -57,7 +55,9 @@ elevations=array2table(squeeze(elevations),"RowNames",rowname,"VariableNames",sa
 %% 时间表
 Time = elevations.Properties.RowNames(rowIdx);
 Satellite = elevations.Properties.VariableNames(colIdx)';
-resultTable = table(Time, Satellite);
+resultTable = table(Time, Satellite,theta,rho);
+resultTable = sortrows(resultTable,"Time","ascend");
+
 writetable(resultTable,'predict_local.csv');
 
 %% 雷达图
@@ -86,6 +86,11 @@ saveas(fig, 'radar_figure.svg', 'svg');
 disp('computing visibility...')
 ac=access(gs,sat);
 intvls = accessIntervals(ac);
+intvls = sortrows(intvls,"StartTime","ascend");
+% 切换时区
+intvls.StartTime.TimeZone='Asia/Shanghai';
+intvls.EndTime.TimeZone='Asia/Shanghai';
+
 writetable(intvls,'predict_matlab.csv');
 
 toc
