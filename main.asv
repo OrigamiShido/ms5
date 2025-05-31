@@ -1,86 +1,58 @@
-%% phase 1
-% tle_struct=TLE_read([pwd,'\gp.tle']);
+%% 定义数值
 % tic
 disp('begin...')
 latitude=30.5288888;
 longitude=114.3530555;
 altitude=56;
 minelevation=60;
-starttime=datetime(2025,5,30,14,0,0,'TimeZone',hours(8));
+starttime=datetime(2025,5,31,14,0,0,'TimeZone',hours(8));
 sampletime=60;
 
-% https://www.mathworks.com/help/releases/R2024b/aerotbx/ug/satelliteScenario-key-concepts.html#mw_e08739b4-c5da-4983-898b-56e18cc71f87
 %% 
-disp('creating satellitescenario...')
+disp('creating satellitescenario object...')
 % 创建图窗
-sc = satelliteScenario(starttime,starttime+hours(2),sampletime);
+sc = satelliteScenario(starttime,starttime+hours(4),sampletime);
+
 %% 
 disp('creating groundstation...')
 % 创建地面站
 gs=groundStation(sc,Name='WHU',Latitude=latitude,Longitude=longitude,Altitude=altitude,MinElevationAngle=minelevation);
+
 %% 
 disp('importing satellites...')
 % 创建和读取卫星，渲染轨道
 % sat=satellite(sc,[pwd,'\gp_single.tle'],OrbitPropagator="sgp4");
-sat=satellite(sc,[pwd,'\gp_half.tle'],OrbitPropagator="sgp4");
+sat=satellite(sc,[pwd,'\gp.tle'],OrbitPropagator="sgp4");
 % sat=satellite(sc,[pwd,'\sup-gp.tle'],OrbitPropagator="sgp4");
 
 
-%% 
-% 设置卫星的可见性
-disp('computing visibility...')
-ac=access(gs,sat);
-intvls = accessIntervals(ac);
+% %% 
+% % 设置卫星的可见性(optional)
+% disp('computing visibility...')
+% ac=access(gs,sat);
+% intvls = accessIntervals(ac);
 
-%% 
-disp('plotting radar figure...')
+%% g
+disp('getting positions and predicting...')
 
 [position,velocity]=states(sat,CoordinateFrame='ecef');
+% [position_lla,velocity_lla]=states(sat,CoordinateFrame='geographic');
+%% 
 
 % 获取地面站 ECEF 坐标
 gsLLA = [latitude, longitude, altitude];
 gsECEF = lla2ecef(gsLLA);
+% 转换卫星坐标为ENU
+[xn,ye,zup]=ecef2enu(position(1,:,:),position(2,:,:),position(3,:,:),gsLLA(1),gsLLA(2),gsLLA(3),wgs84Ellipsoid);
+% 转换ENU坐标为AER
+[azimuth,elevations]=enu2aer(xn,ye,zup);
+% 数组降维
+azimuth=squeeze(azimuth);
+elevations=squeeze(elevations);
 
-% position: [3, numSats, numTimes]，需要根据实际维度调整
-[numDim, numTimes, numSats] = size(position);
+%% plot radar figure
+disp('plotting radar figure...');
 
-azimuths = zeros(numTimes,numSats );
-elevations = zeros(numTimes,numSats );
-
-
-
-for t = 1:numTimes
-    for s = 1:numSats
-        satECEF = position(:,t,s)';
-        % 计算卫星到地面站的向量
-        vecECEF = satECEF - gsECEF;
-        % 转换到 ENU 坐标系
-        [xn,ye,zup] = ecef2enu(vecECEF(1),vecECEF(2),vecECEF(3), gsLLA(1),gsLLA(2),gsLLA(3),wgs84Ellipsoid);
-        % 计算方位角和仰角
-        [azimuths(t, s),elevations(t, s), ~] = enu2aer(xn,ye,zup);
-        % azimuths(s, t) = rad2deg(az);
-        % elevations(s, t) = rad2deg(el);
-    end
-end
-% %% 
-% figure;
-% hold on;
-% for t = 1:numTimes
-%     for s = 1:numSats
-%         az = azimuths(s, t);
-%         el = elevations(s, t);
-%         if -el > 60
-%             % 可见卫星用红色点
-%             polarscatter(deg2rad(az), 90+el, 'ro', 'MarkerSize', 6, 'MarkerFaceColor', 'r');
-%         end
-%     end
-% end
-% % set(gca, 'ThetaZeroLocation', 'top', 'ThetaDir', 'clockwise');
-% rlim([0 90]);
-% rticks([0 30 60 90]);
-% rticklabels({'90°','60°','30°','0°'});
-% title('卫星可见性雷达图（仰角>60°为可见）');
-% hold off;
 
 % toc
 %% 
